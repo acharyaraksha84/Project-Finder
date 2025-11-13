@@ -1,22 +1,20 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Moon, Sun, ArrowLeft, User, Mail, Building2, Calendar, Code, Lightbulb, X, Plus } from "lucide-react";
+import { User, Mail, Building2, Calendar, Code, Lightbulb, X, Plus } from "lucide-react";
 import axios from "axios";
 import { toast } from "sonner";
+import Navbar from "@/components/Navbar";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -30,7 +28,6 @@ const Profile = () => {
   const [interestInput, setInterestInput] = useState("");
 
   useEffect(() => {
-    setMounted(true);
     // Load profile from localStorage if exists
     const savedEmail = localStorage.getItem("userEmail");
     if (savedEmail) {
@@ -43,7 +40,6 @@ const Profile = () => {
       const response = await axios.get(`${API}/profile/${email}`);
       setFormData(response.data);
     } catch (error) {
-      // Profile doesn't exist yet, which is fine
       console.log("No existing profile found");
     }
   };
@@ -132,36 +128,9 @@ const Profile = () => {
     }
   };
 
-  if (!mounted) return null;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-950 dark:via-slate-900 dark:to-purple-950 transition-colors duration-300">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-md bg-white/70 dark:bg-gray-950/70 border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <Button
-              data-testid="back-btn"
-              variant="ghost"
-              onClick={() => navigate("/")}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Home
-            </Button>
-            
-            <Button
-              data-testid="theme-toggle-btn"
-              variant="outline"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="rounded-full"
-            >
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </Button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* Profile Form */}
       <section className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
