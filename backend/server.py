@@ -150,7 +150,7 @@ async def fetch_arxiv_papers(query: str, limit: int = 10) -> List[Project]:
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                "http://export.arxiv.org/api/query",
+                "https://export.arxiv.org/api/query",
                 params={
                     "search_query": f"all:{query}",
                     "start": 0,
