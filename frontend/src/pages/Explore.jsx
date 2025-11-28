@@ -20,29 +20,23 @@ const Explore = () => {
   const [levelFilter, setLevelFilter] = useState("all");
   const [favorites, setFavorites] = useState([]);
 
-  // Load favorites
   useEffect(() => {
     const saved = localStorage.getItem("favorites");
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
   const toggleFavorite = (project) => {
-    let updated;
-    const exists = favorites.some((fav) => fav.id === project.id);
+    const exists = favorites.some((f) => f.id === project.id);
+    const updated = exists
+      ? favorites.filter((f) => f.id !== project.id)
+      : [...favorites, project];
 
-    if (exists) {
-      updated = favorites.filter((fav) => fav.id !== project.id);
-      toast.success("Removed from favorites");
-    } else {
-      updated = [...favorites, project];
-      toast.success("Added to favorites");
-    }
-
+    toast.success(exists ? "Removed from favorites" : "Added to favorites");
     setFavorites(updated);
     localStorage.setItem("favorites", JSON.stringify(updated));
   };
 
-  // ⭐ Correct search function — ONLY uses backend
+  // ⭐ Search (Papers + GitHub + Dataset dummy + fallback for papers)
   const searchProjects = async () => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a search query");
@@ -56,18 +50,47 @@ const Explore = () => {
         params: {
           query: searchQuery,
           source: sourceFilter === "all" ? null : sourceFilter,
-          level: levelFilter === "all" ? null : levelFilter
-        }
+          level: levelFilter === "all" ? null : levelFilter,
+        },
       });
 
-      setProjects(response.data);
+      let results = response.data;
 
-      if (response.data.length === 0) {
-        toast.info("No projects or papers found.");
+      // ---- PAPER FALLBACK ----
+      const hasPapers = results.some((p) => p.source === "paper");
+      if (!hasPapers && (sourceFilter === "all" || sourceFilter === "paper")) {
+        results.push({
+          id: "dummy-paper-" + Date.now(),
+          title: `${searchQuery} Research Paper (Dummy)`,
+          description: `arXiv API blocked — showing sample paper for '${searchQuery}'.`,
+          source: "paper",
+          level: "intermediate",
+          novelty_score: 7.4,
+          url: "https://arxiv.org",
+          tags: ["arxiv", searchQuery],
+        });
       }
-    } catch (err) {
-      console.error("Error:", err);
-      toast.error("Failed to search");
+
+      // ---- DATASET FALLBACK ----
+      const hasDataset = results.some((p) => p.source === "dataset");
+      if (!hasDataset && (sourceFilter === "all" || sourceFilter === "dataset")) {
+        results.push({
+          id: "dummy-dataset-" + Date.now(),
+          title: `${searchQuery} Dataset (Dummy)`,
+          description: `Sample dataset for '${searchQuery}'. Kaggle API blocked.`,
+          source: "dataset",
+          level: "easy",
+          novelty_score: 6.5,
+          url: "https://kaggle.com",
+          tags: ["dataset", searchQuery],
+        });
+      }
+
+      setProjects(results);
+      if (results.length === 0) toast.info("No results found.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Search failed");
     } finally {
       setLoading(false);
     }
@@ -77,32 +100,33 @@ const Explore = () => {
     if (e.key === "Enter") searchProjects();
   };
 
-  // Icons
-  const getSourceIcon = (source) => ({
-    github: <Github className="w-4 h-4" />,
-    paper: <FileText className="w-4 h-4" />,
-    dataset: <Database className="w-4 h-4" />
-  }[source]);
+  const getSourceIcon = (source) =>
+    ({
+      github: <Github className="w-4 h-4" />,
+      paper: <FileText className="w-4 h-4" />,
+      dataset: <Database className="w-4 h-4" />,
+    }[source]);
 
-  // Colors
-  const getSourceColor = (source) => ({
-    github: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
-    paper: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
-    dataset: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-  }[source] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300");
+  const getSourceColor = (source) =>
+    ({
+      github: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300",
+      paper: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",
+      dataset: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+    }[source] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300");
 
-  const getLevelColor = (level) => ({
-    easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
-    intermediate: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
-    advanced: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-  }[level] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300");
+  const getLevelColor = (level) =>
+    ({
+      easy: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300",
+      intermediate: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300",
+      advanced: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300",
+    }[level] || "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300");
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-950 dark:via-slate-900 dark:to-purple-950 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:from-gray-950 dark:via-slate-900 dark:to-purple-950">
       <Navbar />
 
-      {/* Search Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* SEARCH SECTION */}
+      <section className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center space-y-6">
           <h2 className="text-4xl sm:text-5xl font-bold">
             Explore <span className="gradient-text">Projects & Papers</span>
@@ -113,22 +137,23 @@ const Explore = () => {
           </p>
 
           {/* Search Bar */}
-          <div className="max-w-3xl mx-auto mt-8 flex flex-col sm:flex-row gap-3">
+          <div className="max-w-3xl mx-auto flex flex-col sm:flex-row gap-3 mt-8">
             <Input
               type="text"
-              placeholder="Search for projects (e.g., machine learning, AI, web...)"
+              placeholder="Search for projects..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
               className="h-12 px-6 rounded-full"
             />
-
             <Button
               onClick={searchProjects}
               disabled={loading}
               className="h-12 px-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500"
             >
-              {loading ? "Searching..." : <><Search className="w-5 h-5 mr-2" />Search</>}
+              {loading ? "Searching..." : <>
+                <Search className="w-5 h-5 mr-2" /> Search
+              </>}
             </Button>
           </div>
 
@@ -166,7 +191,7 @@ const Explore = () => {
         </div>
       </section>
 
-      {/* Results */}
+      {/* RESULTS */}
       {projects.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 pb-16">
           <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -174,23 +199,19 @@ const Explore = () => {
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project, index) => {
+            {projects.map((project) => {
               const fav = favorites.some((f) => f.id === project.id);
 
               return (
-                <Card key={index} className="group hover:shadow-xl border rounded-xl transition">
+                <Card key={project.id} className="hover:shadow-xl border rounded-xl transition">
                   <CardHeader>
                     <div className="flex justify-between">
                       <CardTitle className="line-clamp-2">{project.title}</CardTitle>
-
                       <Button variant="ghost" size="icon" onClick={() => toggleFavorite(project)}>
                         <Heart className={`w-5 h-5 ${fav ? "fill-red-500 text-red-500" : "text-gray-400"}`} />
                       </Button>
                     </div>
-
-                    <CardDescription className="mt-2 line-clamp-3">
-                      {project.description}
-                    </CardDescription>
+                    <CardDescription className="mt-2 line-clamp-3">{project.description}</CardDescription>
                   </CardHeader>
 
                   <CardContent>
@@ -207,28 +228,25 @@ const Explore = () => {
                         </Badge>
                       </div>
 
-                      {/* Tags (Authors for papers) */}
                       {project.tags && (
                         <div className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
                           {project.tags.join(", ")}
                         </div>
                       )}
 
-                      {/* Stars for GitHub */}
                       {project.stars && (
                         <div className="flex items-center gap-1 text-sm text-gray-500">
                           <Star className="w-4 h-4 text-yellow-400" /> {project.stars}
                         </div>
                       )}
 
-                      {/* Link */}
                       <a
                         href={project.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-purple-600 hover:underline"
+                        className="text-purple-600 inline-flex gap-2 hover:underline"
                       >
-                        View {project.source === "paper" ? "Paper" : "Project"}
+                        View {project.source === "paper" ? "Paper" : project.source === "dataset" ? "Dataset" : "Project"}
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
@@ -240,7 +258,6 @@ const Explore = () => {
         </section>
       )}
 
-      {/* Empty State */}
       {!loading && projects.length === 0 && (
         <section className="text-center py-16">
           <Search className="w-16 h-16 mx-auto text-purple-500" />
